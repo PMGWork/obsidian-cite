@@ -1,39 +1,34 @@
-.cite-link {
-  font-style: normal;
-  text-decoration: none;
-  border-bottom: 1px solid var(--link-color);
-  color: var(--link-color);
-  cursor: pointer;
-}
-
-.cite-link:hover {
-  border-bottom-style: solid;
-  opacity: 0.85;
-}
-
 .cite-unresolved {
   color: var(--text-muted);
   border-bottom: 1px dashed var(--text-muted);
 }
 
 .cite-bibliography {
-  margin-top: 1.5em;
-  border-top: 1px solid var(--background-modifier-border);
-  padding-top: 1em;
+  color: inherit;
+  font: inherit;
+  margin: 0;
+  padding: 0;
 }
 
 .cite-bibliography-item {
-  margin: 0.3em 0;
-  font-size: 0.9em;
-  line-height: 1.5;
+  color: inherit;
+  font: inherit;
+  display: inline;
+  margin: 0;
 }
 
-.cite-bibliography-link {
-  color: var(--text-normal);
-  text-decoration: none;
+/* Autocomplete items */
+.cite-completion-key {
+  display: block;
+  font-size: var(--font-smaller);
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
-.cite-bibliography-link:hover {
-  color: var(--link-color);
-  text-decoration: underline;
+.cite-completion-separator {
+  display: block;
+  height: 1px;
+  background: var(--background-modifier-border);
+  border: none;
+  margin: 4px -8px 0;
 }
