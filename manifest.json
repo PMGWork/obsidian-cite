@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-cite",
+  "name": "Cite",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Enable \\cite{key} citation syntax that links to Obsidian notes",
+  "author": "yuto",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
