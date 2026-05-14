@@ -29,10 +29,7 @@ var import_autocomplete = require("@codemirror/autocomplete");
 var DEFAULT_SETTINGS = {
   citationSyntax: "latex",
   referenceFolder: "",
-  bibliographyStyle: "plain",
-  authorField: "author",
-  yearField: "year",
-  titleField: "title"
+  bibliographyStyle: "plain"
 };
 var CITE_SOURCE = /\\cite\{([^}]+)\}/.source;
 var PANDOC_CITE_SOURCE = /\[((?:@[^\]\s;]+(?:\s*;\s*)?)+)\]/.source;
@@ -137,7 +134,7 @@ function extractLastName(raw) {
   if (name.includes(",")) return name.split(",")[0].trim();
   return (_a = name.split(/\s+/).pop()) != null ? _a : name;
 }
-function stringifyFrontmatterValue(value) {
+function stringifyValue(value) {
   if (Array.isArray(value)) return value.map((item) => String(item)).join(", ");
   if (value === null || value === void 0) return "";
   return String(value);
@@ -146,7 +143,7 @@ function stripAffiliation(raw) {
   return raw.replace(/\s*\([^)]*\)/g, "").trim();
 }
 function stringifyAuthors(value, abbreviate) {
-  const authors = Array.isArray(value) ? value.map((item) => String(item)) : stringifyFrontmatterValue(value).split(/\s+and\s+|,\s+(?=[A-Z][^,]+(?:\(|$))/);
+  const authors = Array.isArray(value) ? value.map((item) => String(item)) : stringifyValue(value).split(/\s+and\s+|,\s+(?=[A-Z][^,]+(?:\(|$))/);
   return authors.map((author) => {
     const name = stripAffiliation(author);
     if (!abbreviate) return name;
@@ -243,15 +240,14 @@ var CitationResolver = class {
     return (_b = (_a = this.citationKeyIndex.get(key)) == null ? void 0 : _a.fields) != null ? _b : null;
   }
   formatBibEntry(key, number, settings) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
+    var _a, _b, _c, _d;
     const file = this.findNote(key);
     if (!file) return { label: `[${number}] ${key}`, filePath: null };
-    const fm = (_a = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a.frontmatter;
     const entryFields = this.getEntryFields(key);
-    const authorRaw = (_d = (_c = (_b = fm == null ? void 0 : fm[settings.authorField]) != null ? _b : fm == null ? void 0 : fm.authors) != null ? _c : fm == null ? void 0 : fm.author) != null ? _d : entryFields == null ? void 0 : entryFields.author;
-    const yearRaw = (_f = (_e = fm == null ? void 0 : fm[settings.yearField]) != null ? _e : fm == null ? void 0 : fm.date) != null ? _f : entryFields == null ? void 0 : entryFields.year;
-    const title = (_h = (_g = fm == null ? void 0 : fm[settings.titleField]) != null ? _g : fm == null ? void 0 : fm.title) != null ? _h : entryFields == null ? void 0 : entryFields.title;
-    const venue = (_o = (_n = (_m = (_l = (_k = (_j = (_i = fm == null ? void 0 : fm.journal) != null ? _i : fm == null ? void 0 : fm.booktitle) != null ? _j : fm == null ? void 0 : fm.source) != null ? _k : entryFields == null ? void 0 : entryFields.journal) != null ? _l : entryFields == null ? void 0 : entryFields.booktitle) != null ? _m : entryFields == null ? void 0 : entryFields.publisher) != null ? _n : entryFields == null ? void 0 : entryFields.howpublished) != null ? _o : entryFields == null ? void 0 : entryFields.url;
+    const authorRaw = entryFields == null ? void 0 : entryFields.author;
+    const yearRaw = entryFields == null ? void 0 : entryFields.year;
+    const title = entryFields == null ? void 0 : entryFields.title;
+    const venue = (_d = (_c = (_b = (_a = entryFields == null ? void 0 : entryFields.journal) != null ? _a : entryFields == null ? void 0 : entryFields.booktitle) != null ? _b : entryFields == null ? void 0 : entryFields.publisher) != null ? _c : entryFields == null ? void 0 : entryFields.howpublished) != null ? _d : entryFields == null ? void 0 : entryFields.url;
     const year = yearRaw ? String(yearRaw).slice(0, 4) : "";
     const label = renderBibliographyStyle(settings.bibliographyStyle, {
       number: String(number),
@@ -259,13 +255,13 @@ var CitationResolver = class {
       authors: stringifyAuthors(authorRaw, false),
       abbrAuthors: stringifyAuthors(authorRaw, true),
       year,
-      title: stringifyFrontmatterValue(title),
-      venue: stringifyFrontmatterValue(venue)
+      title: stringifyValue(title),
+      venue: stringifyValue(venue)
     });
     return { label: label || `[${number}] ${file.basename}`, filePath: file.path };
   }
   getAllKeys() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a, _b, _c, _d, _e, _f;
     const results = [];
     const seen = /* @__PURE__ */ new Set();
     for (const [key, entry] of this.citationKeyIndex) {
@@ -273,10 +269,9 @@ var CitationResolver = class {
       seen.add(key);
       const file = this.app.vault.getAbstractFileByPath(entry.path);
       if (!(file instanceof import_obsidian.TFile)) continue;
-      const fm = (_a = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a.frontmatter;
-      const title = (_d = (_c = (_b = entry.fields) == null ? void 0 : _b.title) != null ? _c : fm == null ? void 0 : fm.title) != null ? _d : file.basename;
-      const author = (_h = (_g = (_f = (_e = entry.fields) == null ? void 0 : _e.author) != null ? _f : fm == null ? void 0 : fm.author) != null ? _g : fm == null ? void 0 : fm.authors) != null ? _h : "";
-      const year = (_j = (_i = entry.fields) == null ? void 0 : _i.year) != null ? _j : (fm == null ? void 0 : fm.year) ? String(fm.year) : "";
+      const title = (_b = (_a = entry.fields) == null ? void 0 : _a.title) != null ? _b : file.basename;
+      const author = (_d = (_c = entry.fields) == null ? void 0 : _c.author) != null ? _d : "";
+      const year = (_f = (_e = entry.fields) == null ? void 0 : _e.year) != null ? _f : "";
       results.push({ key, title, detail: [author, year].filter(Boolean).join(", ") });
     }
     return results.sort((a, b) => a.key.localeCompare(b.key));
@@ -726,24 +721,6 @@ var CiteSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.bibliographyStyle = val;
         await this.plugin.saveSettings();
         this.plugin.refreshOpenNotes();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Author field").setDesc("Frontmatter key for author name").addText(
-      (text) => text.setPlaceholder("author").setValue(this.plugin.settings.authorField).onChange(async (val) => {
-        this.plugin.settings.authorField = val.trim() || "author";
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Year field").setDesc("Frontmatter key for publication year").addText(
-      (text) => text.setPlaceholder("year").setValue(this.plugin.settings.yearField).onChange(async (val) => {
-        this.plugin.settings.yearField = val.trim() || "year";
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Title field").setDesc("Frontmatter key for paper title (used in bibliography)").addText(
-      (text) => text.setPlaceholder("title").setValue(this.plugin.settings.titleField).onChange(async (val) => {
-        this.plugin.settings.titleField = val.trim() || "title";
-        await this.plugin.saveSettings();
       })
     );
   }
