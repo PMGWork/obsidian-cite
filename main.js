@@ -34,6 +34,16 @@ var DEFAULT_SETTINGS = {
 var CITE_SOURCE = /\\cite\{([^}]+)\}/.source;
 var PANDOC_CITE_SOURCE = /\[((?:@[^\]\s;]+(?:\s*;\s*)?)+)\]/.source;
 var BIBLIOGRAPHY_SOURCE = /\\bibliography(?:\{[^}]*\})?/.source;
+var refreshCiteDecorations = import_state.StateEffect.define();
+function getEditorSourcePath(view) {
+  var _a, _b;
+  try {
+    const info = view.state.field(import_obsidian.editorInfoField);
+    return (_b = (_a = info == null ? void 0 : info.file) == null ? void 0 : _a.path) != null ? _b : "";
+  } catch (e) {
+    return "";
+  }
+}
 var VENUE_WITH_IN_TYPES = /* @__PURE__ */ new Set([
   "inproceedings",
   "conference",
@@ -464,8 +474,11 @@ var CitationResolver = class {
     return extractBibtexEntries(content);
   }
   removeFile(file) {
+    this.removePath(file.path);
+  }
+  removePath(path) {
     for (const [key, entry] of this.citationKeyIndex) {
-      if (entry.path === file.path) this.citationKeyIndex.delete(key);
+      if (entry.path === path) this.citationKeyIndex.delete(key);
     }
   }
   findNote(key) {
@@ -588,11 +601,12 @@ function bindCitationLink(app, a, filePath, sourcePath) {
   });
 }
 var CiteWidget = class extends import_view.WidgetType {
-  constructor(app, entries, settings) {
+  constructor(app, entries, settings, sourcePath) {
     super();
     this.app = app;
     this.entries = entries;
     this.settings = settings;
+    this.sourcePath = sourcePath;
   }
   eq(other) {
     return other.entries.length === this.entries.length && other.entries.every(
@@ -616,7 +630,7 @@ var CiteWidget = class extends import_view.WidgetType {
           cls: "internal-link cite-link"
         });
         a.title = entry.key;
-        bindCitationLink(this.app, a, entry.filePath, "");
+        bindCitationLink(this.app, a, entry.filePath, this.sourcePath);
       } else {
         span.createSpan({
           text: entry.displayText,
@@ -647,10 +661,11 @@ function buildBibliographyEl(app, entries, sourcePath) {
   return container;
 }
 var BibliographyWidget = class extends import_view.WidgetType {
-  constructor(app, entries) {
+  constructor(app, entries, sourcePath) {
     super();
     this.app = app;
     this.entries = entries;
+    this.sourcePath = sourcePath;
   }
   eq(other) {
     return other.entries.length === this.entries.length && other.entries.every((e, i) => e.label === this.entries[i].label);
@@ -661,10 +676,10 @@ var BibliographyWidget = class extends import_view.WidgetType {
     return true;
   }
   toDOM() {
-    return buildBibliographyEl(this.app, this.entries, "");
+    return buildBibliographyEl(this.app, this.entries, this.sourcePath);
   }
 };
-function buildDecorations(view, resolver, app, settings) {
+function buildDecorations(view, resolver, app, settings, sourcePath) {
   const { from: selFrom, to: selTo } = view.state.selection.main;
   const fullText = view.state.doc.toString();
   const pending = [];
@@ -689,7 +704,9 @@ function buildDecorations(view, resolver, app, settings) {
       pending.push({
         start,
         end,
-        dec: import_view.Decoration.replace({ widget: new CiteWidget(app, entries, settings) })
+        dec: import_view.Decoration.replace({
+          widget: new CiteWidget(app, entries, settings, sourcePath)
+        })
       });
     }
     const bibRegex = new RegExp(BIBLIOGRAPHY_SOURCE, "g");
@@ -705,7 +722,9 @@ function buildDecorations(view, resolver, app, settings) {
       pending.push({
         start,
         end,
-        dec: import_view.Decoration.replace({ widget: new BibliographyWidget(app, orderedRefs) })
+        dec: import_view.Decoration.replace({
+          widget: new BibliographyWidget(app, orderedRefs, sourcePath)
+        })
       });
     }
   }
@@ -747,8 +766,10 @@ var ObsidianCitePlugin = class extends import_obsidian.Plugin {
       })
     );
     this.registerEvent(
-      this.app.vault.on("rename", (file) => {
+      this.app.vault.on("rename", (file, oldPath) => {
         if (file instanceof import_obsidian.TFile && file.extension === "md") {
+          this.resolver.removePath(oldPath);
+          this.sourceCache.delete(oldPath);
           this.resolver.indexFile(file);
         }
       })
@@ -773,7 +794,7 @@ var ObsidianCitePlugin = class extends import_obsidian.Plugin {
       const view = leaf.view;
       (_a = view.previewMode) == null ? void 0 : _a.rerender(true);
       const cm = (_b = view.editor) == null ? void 0 : _b.cm;
-      cm == null ? void 0 : cm.dispatch({});
+      cm == null ? void 0 : cm.dispatch({ effects: refreshCiteDecorations.of(null) });
     });
   }
   async loadSettings() {
@@ -810,14 +831,22 @@ var ObsidianCitePlugin = class extends import_obsidian.Plugin {
     const section = ctx.getSectionInfo(el);
     const sectionOffset = section ? getLineStartOffset(sourceText, section.lineStart) : 0;
     if (hasBib) {
+      let bibliographySearchFrom = sectionOffset;
       el.querySelectorAll("p").forEach((p) => {
         var _a2, _b2, _c2, _d2;
         if (/^\\bibliography(?:\{[^}]*\})?\s*$/.test((_b2 = (_a2 = p.textContent) == null ? void 0 : _a2.trim()) != null ? _b2 : "")) {
           const bibliographySource = (_d2 = (_c2 = p.textContent) == null ? void 0 : _c2.trim()) != null ? _d2 : "";
-          const bibliographyIndex = sourceText.indexOf(bibliographySource, sectionOffset);
+          const bibliographyIndex = sourceText.indexOf(
+            bibliographySource,
+            bibliographySearchFrom
+          );
+          const position = bibliographyIndex >= 0 ? bibliographyIndex : bibliographySearchFrom;
+          if (bibliographyIndex >= 0) {
+            bibliographySearchFrom = bibliographyIndex + bibliographySource.length;
+          }
           const citationMap = buildBibliographyCitationMap(
             sourceText,
-            bibliographyIndex >= 0 ? bibliographyIndex : sectionOffset,
+            position,
             this.settings
           );
           const orderedRefs = [...citationMap.entries()].sort(([, a], [, b]) => a - b).map(([key, number]) => ({
@@ -928,11 +957,26 @@ var ObsidianCitePlugin = class extends import_obsidian.Plugin {
       import_view.ViewPlugin.fromClass(
         class {
           constructor(view) {
-            this.decorations = buildDecorations(view, resolver, app, settings);
+            this.decorations = buildDecorations(
+              view,
+              resolver,
+              app,
+              settings,
+              getEditorSourcePath(view)
+            );
           }
           update(update) {
-            if (update.docChanged || update.viewportChanged || update.selectionSet) {
-              this.decorations = buildDecorations(update.view, resolver, app, settings);
+            const needsRefresh = update.docChanged || update.viewportChanged || update.selectionSet || update.transactions.some(
+              (tr) => tr.effects.some((effect) => effect.is(refreshCiteDecorations))
+            );
+            if (needsRefresh) {
+              this.decorations = buildDecorations(
+                update.view,
+                resolver,
+                app,
+                settings,
+                getEditorSourcePath(update.view)
+              );
             }
           }
         },
