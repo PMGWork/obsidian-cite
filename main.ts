@@ -57,8 +57,17 @@ const BIBLIOGRAPHY_SOURCE = /\\bibliography(?:\{[^}]*\})?/.source;
 
 interface BibtexEntry {
   key: string;
+  type: string;
   fields: Record<string, string>;
 }
+
+const VENUE_WITH_IN_TYPES = new Set([
+  "inproceedings",
+  "conference",
+  "incollection",
+  "inbook",
+  "proceedings",
+]);
 
 function cleanBibtexValue(value: string): string {
   return value
@@ -73,14 +82,14 @@ function cleanBibtexValue(value: string): string {
 function extractBibtexEntries(content: string): BibtexEntry[] {
   return [...content.matchAll(/```bibtex[\s\S]*?```/gi)].flatMap((block) => {
     const blockText = block[0];
-    return [...blockText.matchAll(/@\w+\{([^,\s\r\n]+),([\s\S]*?)(?=\n\s*@\w+\{|```)/g)]
+    return [...blockText.matchAll(/@(\w+)\{([^,\s\r\n]+),([\s\S]*?)(?=\n\s*@\w+\{|```)/g)]
       .map((entryMatch) => {
         const fields: Record<string, string> = {};
-        const body = entryMatch[2];
+        const body = entryMatch[3];
         for (const fieldMatch of body.matchAll(/(\w+)\s*=\s*({[\s\S]*?}|"[\s\S]*?"|[^,\r\n]+)/g)) {
           fields[fieldMatch[1].toLowerCase()] = cleanBibtexValue(fieldMatch[2]);
         }
-        return { key: entryMatch[1], fields };
+        return { key: entryMatch[2], type: entryMatch[1].toLowerCase(), fields };
       });
   });
 }
@@ -222,28 +231,99 @@ function stripAffiliation(raw: string): string {
   return raw.replace(/\s*\([^)]*\)/g, "").trim();
 }
 
-function stringifyAuthors(value: unknown, abbreviate: boolean): string {
-  const authors = Array.isArray(value)
-    ? value.map((item) => String(item))
-    : stringifyValue(value).split(/\s+and\s+|,\s+(?=[A-Z][^,]+(?:\(|$))/);
+function hasCjk(text: string): boolean {
+  return /[\u3000-\u9fff\u3400-\u4dbf\uf900-\ufaff]/.test(text);
+}
 
-  return authors
-    .map((author) => {
-      const name = stripAffiliation(author);
-      if (!abbreviate) return name;
-      if (name.includes(",")) return name;
-      const parts = name.split(/\s+/).filter(Boolean);
-      if (parts.length <= 1) return name;
-      const last = parts.pop();
-      const initials = parts.map((part) => `${part[0]}.`).join(" ");
-      return `${initials} ${last}`;
-    })
+function isCorporateAuthor(name: string): boolean {
+  if (name.includes(",")) return false;
+  return (
+    /\b(Inc\.|Ltd\.|LLC|Corp\.|Corporation|Company|Association|Press)\b/i.test(name) ||
+    /^[\w .&'-]+\.$/.test(name)
+  );
+}
+
+/** BibTeX "family, given" segment — not a full "First M. Last" name. */
+function isFamilyNamePart(segment: string): boolean {
+  const words = segment.trim().split(/\s+/);
+  if (words.length > 2) return false;
+  if (/\b[A-Z]\./.test(segment)) return false;
+  return true;
+}
+
+function parseAuthorChunk(chunk: string): string[] {
+  if (!chunk.includes(",")) return [chunk];
+
+  const segments = chunk.split(",").map((s) => s.trim()).filter(Boolean);
+  if (segments.length <= 2) return [chunk];
+
+  if (
+    segments.length % 2 === 0 &&
+    segments.every((seg, i) => (i % 2 === 0 ? isFamilyNamePart(seg) : seg.length > 0))
+  ) {
+    const authors: string[] = [];
+    for (let i = 0; i < segments.length; i += 2) {
+      authors.push(`${segments[i]}, ${segments[i + 1]}`);
+    }
+    return authors;
+  }
+
+  return segments;
+}
+
+function parseAuthorList(value: unknown): string[] {
+  const raw = Array.isArray(value)
+    ? value.map((item) => String(item)).join(" and ")
+    : stringifyValue(value);
+  if (!raw.trim()) return [];
+
+  return raw
+    .split(/\s+and\s+/i)
+    .flatMap((chunk) => parseAuthorChunk(chunk.trim()))
+    .map((author) => stripAffiliation(author))
+    .filter(Boolean);
+}
+
+function abbreviateWesternName(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return name;
+  const last = parts.pop()!;
+  const initials = parts.map((part) => `${part[0]}.`).join(" ");
+  return `${initials} ${last}`.trim();
+}
+
+function formatAuthorName(raw: string, abbreviate: boolean): string {
+  const name = stripAffiliation(raw);
+  if (!name) return "";
+  if (isCorporateAuthor(name)) return name;
+
+  if (name.includes(",")) {
+    const comma = name.indexOf(",");
+    const family = name.slice(0, comma).trim();
+    const given = name.slice(comma + 1).trim();
+    if (!given) return name;
+
+    if (hasCjk(family) || hasCjk(given)) {
+      const jp = `${family} ${given}`;
+      return abbreviate ? name : jp;
+    }
+
+    const normalized = `${given} ${family}`;
+    return abbreviate ? abbreviateWesternName(normalized) : normalized;
+  }
+
+  return abbreviate ? abbreviateWesternName(name) : name;
+}
+
+function stringifyAuthors(value: unknown, abbreviate: boolean): string {
+  return parseAuthorList(value)
+    .map((author) => formatAuthorName(author, abbreviate))
     .filter(Boolean)
-    .join(", ");
+    .join(" and ");
 }
 
 function getAlphaLabel(authors: string, year: string): string {
-  const firstAuthor = authors.split(",")[0]?.trim() ?? "";
+  const firstAuthor = authors.split(/\s+and\s+/)[0]?.trim() ?? "";
   const base = extractLastName(firstAuthor).slice(0, 3) || "ref";
   return `${base}${year.slice(-2)}`;
 }
@@ -269,6 +349,33 @@ function renderBibliographyFormat(
   return cleanupBibliographyLabel(rendered);
 }
 
+function formatBibliographyVenue(
+  entryType: string,
+  fields: Record<string, string>
+): string {
+  const type = entryType.toLowerCase();
+  const withIn = (container: string) =>
+    container.startsWith("In ") ? container : `In ${container}`;
+
+  const booktitle = fields.booktitle?.trim() ?? "";
+  const journal = fields.journal?.trim() ?? "";
+  const publisher = fields.publisher?.trim() ?? "";
+  const other = fields.howpublished?.trim() || fields.url?.trim() || "";
+
+  if (type === "article") {
+    return journal || booktitle || publisher || other;
+  }
+
+  if (VENUE_WITH_IN_TYPES.has(type)) {
+    const container = booktitle || journal || publisher || other;
+    return container ? withIn(container) : "";
+  }
+
+  if (booktitle) return withIn(booktitle);
+
+  return journal || publisher || booktitle || other;
+}
+
 function renderBibliographyStyle(
   style: ObsidianCiteSettings["bibliographyStyle"],
   values: Record<string, string>
@@ -284,14 +391,17 @@ function renderBibliographyStyle(
     unsrt: "[{label}] {authors}. {title}. {venue}, {year}.",
     alpha: "[{label}] {authors}. {title}. {venue}, {year}.",
     ieeetr: "[{label}] {authors}, \"{title},\" {venue}, {year}.",
-    acm: "[{label}] {authors}. {title}. In {venue}, {year}.",
+    acm: "[{label}] {authors}. {title}. {venue}, {year}.",
   };
 
   return renderBibliographyFormat(formats[style], styleValues);
 }
 
 class CitationResolver {
-  private citationKeyIndex = new Map<string, { path: string; fields?: Record<string, string> }>();
+  private citationKeyIndex = new Map<
+    string,
+    { path: string; type: string; fields?: Record<string, string> }
+  >();
 
   constructor(private app: App, private settings: ObsidianCiteSettings) {}
 
@@ -324,6 +434,7 @@ class CitationResolver {
     for (const entry of await this.extractCitationEntries(file)) {
       this.citationKeyIndex.set(entry.key, {
         path: file.path,
+        type: entry.type,
         fields: entry.fields,
       });
     }
@@ -362,16 +473,14 @@ class CitationResolver {
     const file = this.findNote(key);
     if (!file) return { label: `[${number}] ${key}`, filePath: null };
 
-    const entryFields = this.getEntryFields(key);
+    const indexEntry = this.citationKeyIndex.get(key);
+    const entryFields = indexEntry?.fields ?? null;
+    const entryType = indexEntry?.type ?? "";
 
     const authorRaw = entryFields?.author;
     const yearRaw = entryFields?.year;
     const title = entryFields?.title;
-    const venue = entryFields?.journal
-      ?? entryFields?.booktitle
-      ?? entryFields?.publisher
-      ?? entryFields?.howpublished
-      ?? entryFields?.url;
+    const venue = formatBibliographyVenue(entryType, entryFields ?? {});
     const year = yearRaw ? String(yearRaw).slice(0, 4) : "";
 
     const label = renderBibliographyStyle(settings.bibliographyStyle, {
