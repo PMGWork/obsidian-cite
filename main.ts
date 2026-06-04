@@ -69,6 +69,13 @@ const VENUE_WITH_IN_TYPES = new Set([
   "proceedings",
 ]);
 
+function normalizeEntryType(entryType: string): string {
+  const type = entryType.toLowerCase();
+  if (type === "inproceeding") return "inproceedings";
+  if (type === "conference") return "inproceedings";
+  return type;
+}
+
 function cleanBibtexValue(value: string): string {
   return value
     .trim()
@@ -237,10 +244,19 @@ function hasCjk(text: string): boolean {
 
 function isCorporateAuthor(name: string): boolean {
   if (name.includes(",")) return false;
-  return (
-    /\b(Inc\.|Ltd\.|LLC|Corp\.|Corporation|Company|Association|Press)\b/i.test(name) ||
-    /^[\w .&'-]+\.$/.test(name)
-  );
+  if (
+    /\b(Inc\.|Ltd\.|LLC|Corp\.|Corporation|Company|Association|Press|Center)\b/i.test(
+      name
+    )
+  ) {
+    return true;
+  }
+  if (/^[\w .&'-]+\.$/.test(name)) return true;
+  // BibTeX group author, e.g. author = {{Procreate}}
+  if (!/\s/.test(name) && /^[A-Z][a-zA-Z0-9&'-]*$/.test(name) && name.length > 2) {
+    return true;
+  }
+  return false;
 }
 
 /** BibTeX "family, given" segment — not a full "First M. Last" name. */
@@ -349,14 +365,68 @@ function renderBibliographyFormat(
   return cleanupBibliographyLabel(rendered);
 }
 
+function joinPublicationParts(parts: string[]): string {
+  return parts.map((part) => part.trim()).filter(Boolean).join(", ");
+}
+
+function normalizePageRange(raw: string | undefined): string {
+  return raw?.trim().replace(/--/g, "–") ?? "";
+}
+
+function formatPages(raw: string | undefined): string {
+  const pages = normalizePageRange(raw);
+  if (!pages) return "";
+  if (/^p+p?\.?\s/i.test(pages)) return pages;
+  return `p. ${pages}`;
+}
+
+function formatChapterPages(raw: string | undefined): string {
+  const pages = normalizePageRange(raw);
+  if (!pages) return "";
+  if (/^pages?\s/i.test(pages)) return pages;
+  return `pages ${pages}`;
+}
+
+function formatEdition(raw: string | undefined): string {
+  const edition = raw?.trim() ?? "";
+  if (!edition) return "";
+  if (/edition$/i.test(edition)) return edition.toLowerCase();
+  return `${edition.toLowerCase()} edition`;
+}
+
+function formatYearWithMonth(month: string | undefined, year: string): string {
+  if (!year) return "";
+  const raw = month?.trim() ?? "";
+  if (!raw) return year;
+
+  const index = parseInt(raw, 10) - 1;
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  if (index >= 0 && index < 12) return `${monthNames[index]} ${year}`;
+  return year;
+}
+
+function withIn(container: string): string {
+  return container.startsWith("In ") ? container : `In ${container}`;
+}
+
 function formatBibliographyVenue(
   entryType: string,
   fields: Record<string, string>
 ): string {
-  const type = entryType.toLowerCase();
-  const withIn = (container: string) =>
-    container.startsWith("In ") ? container : `In ${container}`;
-
+  const type = normalizeEntryType(entryType);
   const booktitle = fields.booktitle?.trim() ?? "";
   const journal = fields.journal?.trim() ?? "";
   const publisher = fields.publisher?.trim() ?? "";
@@ -376,6 +446,149 @@ function formatBibliographyVenue(
   return journal || publisher || booktitle || other;
 }
 
+function formatInproceedingsPublication(
+  fields: Record<string, string>,
+  year: string
+): string {
+  const parts: string[] = [];
+  const booktitle = fields.booktitle?.trim();
+  if (booktitle) parts.push(withIn(booktitle));
+
+  const series = fields.series?.trim();
+  if (series) parts.push(series);
+
+  const pages = formatPages(fields.pages);
+  if (pages) parts.push(pages);
+
+  if (year) parts.push(year);
+
+  const publisher = fields.publisher?.trim();
+  if (publisher) parts.push(publisher);
+
+  const formatted = joinPublicationParts(parts);
+  return formatted || formatDefaultPublication("inproceedings", fields, year);
+}
+
+function formatIncollectionPublication(
+  fields: Record<string, string>,
+  year: string
+): string {
+  const parts: string[] = [];
+  const booktitle = fields.booktitle?.trim();
+  if (booktitle) parts.push(withIn(booktitle));
+
+  const pages = formatChapterPages(fields.pages);
+  if (pages) parts.push(pages);
+
+  const publisher = fields.publisher?.trim();
+  if (publisher) parts.push(publisher);
+
+  if (year) parts.push(year);
+
+  const formatted = joinPublicationParts(parts);
+  return formatted || formatDefaultPublication("incollection", fields, year);
+}
+
+function formatBookPublication(fields: Record<string, string>, year: string): string {
+  const parts: string[] = [];
+  const series = fields.series?.trim();
+  const volume = fields.volume?.trim();
+
+  if (volume && series) parts.push(`volume ${volume} of ${series}`);
+  else if (series) parts.push(series);
+  else if (volume) parts.push(`volume ${volume}`);
+
+  const publisher =
+    fields.publisher?.trim() || fields.institution?.trim() || "";
+  if (publisher) parts.push(publisher);
+
+  const edition = formatEdition(fields.edition);
+  if (edition) parts.push(edition);
+
+  const pubYear = formatYearWithMonth(fields.month, year);
+  if (pubYear) parts.push(pubYear);
+
+  const formatted = joinPublicationParts(parts);
+  return formatted || formatDefaultPublication("book", fields, year);
+}
+
+function formatMiscPublication(fields: Record<string, string>, _year: string): string {
+  const parts: string[] = [];
+  const howpublished = fields.howpublished?.trim();
+  const publisher = fields.publisher?.trim();
+  const journal = fields.journal?.trim();
+  const url = fields.url?.trim();
+
+  const hasContainer = Boolean(howpublished || publisher || journal);
+
+  if (howpublished) parts.push(howpublished);
+  else if (publisher) parts.push(publisher);
+  else if (journal) parts.push(journal);
+  else if (url) parts.push(url);
+
+  if (url && hasContainer) parts.push(url);
+
+  const formatted = joinPublicationParts(parts);
+  return formatted || formatDefaultPublication("misc", fields, _year);
+}
+
+function formatArticlePublication(fields: Record<string, string>, year: string): string {
+  const parts: string[] = [];
+  const journal = fields.journal?.trim();
+  if (journal) parts.push(journal);
+
+  const volume = fields.volume?.trim();
+  const number = fields.number?.trim();
+  const pages = fields.pages?.trim();
+
+  const pageRange = normalizePageRange(pages);
+
+  if (volume && number && pageRange) {
+    parts.push(`${volume}(${number}):${pageRange}`);
+  } else if (volume && pageRange) {
+    parts.push(`${volume}:${pageRange}`);
+  } else {
+    const formattedPages = formatPages(pages);
+    if (formattedPages) parts.push(formattedPages);
+    else if (volume) parts.push(volume);
+  }
+
+  if (year) parts.push(year);
+
+  return joinPublicationParts(parts);
+}
+
+function formatDefaultPublication(
+  entryType: string,
+  fields: Record<string, string>,
+  year: string
+): string {
+  const venue = formatBibliographyVenue(entryType, fields);
+  return joinPublicationParts([venue, year]);
+}
+
+function formatBibliographyPublication(
+  entryType: string,
+  fields: Record<string, string>,
+  year: string
+): string {
+  switch (normalizeEntryType(entryType)) {
+    case "inproceedings":
+      return formatInproceedingsPublication(fields, year);
+    case "book":
+      return formatBookPublication(fields, year);
+    case "incollection":
+    case "inbook":
+      return formatIncollectionPublication(fields, year);
+    case "misc":
+      return formatMiscPublication(fields, year);
+    case "article":
+      return formatArticlePublication(fields, year);
+    default:
+      return formatDefaultPublication(entryType, fields, year);
+  }
+}
+
 function renderBibliographyStyle(
   style: ObsidianCiteSettings["bibliographyStyle"],
   values: Record<string, string>
@@ -386,12 +599,12 @@ function renderBibliographyStyle(
   };
 
   const formats: Record<ObsidianCiteSettings["bibliographyStyle"], string> = {
-    plain: "[{label}] {authors}. {title}. {venue}, {year}.",
-    abbrv: "[{label}] {abbrAuthors}. {title}. {venue}, {year}.",
-    unsrt: "[{label}] {authors}. {title}. {venue}, {year}.",
-    alpha: "[{label}] {authors}. {title}. {venue}, {year}.",
-    ieeetr: "[{label}] {authors}, \"{title},\" {venue}, {year}.",
-    acm: "[{label}] {authors}. {title}. {venue}, {year}.",
+    plain: "[{label}] {authors}. {title}. {publication}.",
+    abbrv: "[{label}] {abbrAuthors}. {title}. {publication}.",
+    unsrt: "[{label}] {authors}. {title}. {publication}.",
+    alpha: "[{label}] {authors}. {title}. {publication}.",
+    ieeetr: "[{label}] {authors}, \"{title},\" {publication}.",
+    acm: "[{label}] {authors}. {title}. {publication}.",
   };
 
   return renderBibliographyFormat(formats[style], styleValues);
@@ -480,8 +693,12 @@ class CitationResolver {
     const authorRaw = entryFields?.author;
     const yearRaw = entryFields?.year;
     const title = entryFields?.title;
-    const venue = formatBibliographyVenue(entryType, entryFields ?? {});
     const year = yearRaw ? String(yearRaw).slice(0, 4) : "";
+    const publication = formatBibliographyPublication(
+      entryType,
+      entryFields ?? {},
+      year
+    );
 
     const label = renderBibliographyStyle(settings.bibliographyStyle, {
       number: String(number),
@@ -490,7 +707,7 @@ class CitationResolver {
       abbrAuthors: stringifyAuthors(authorRaw, true),
       year,
       title: stringifyValue(title),
-      venue: stringifyValue(venue),
+      publication: stringifyValue(publication),
     });
 
     return { label: label || `[${number}] ${file.basename}`, filePath: file.path };
