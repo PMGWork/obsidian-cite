@@ -1,5 +1,7 @@
 # Cite
 
+[日本語](README_ja.md) | [简体中文](README_zh.md)
+
 Cite renders LaTeX- or Pandoc-style citations in Obsidian and links them to reference notes containing BibTeX. It works in Live Preview and Reading view, provides citation-key completion, and can render a lightweight bibliography.
 
 > Cite 0.1.0 requires Obsidian 1.12.7 or later. Desktop, iOS, and Android are supported.
@@ -70,14 +72,6 @@ npm run dev
 ```
 
 Run the complete release check with `npm run check`. Production `main.js` is generated locally and attached to GitHub Releases; it is intentionally not committed.
-
-## 日本語
-
-Citeは、ノート内のBibTeXを参照し、`\cite{key}` または `[@key]` を番号付き内部リンクとして表示するプラグインです。Live Preview、閲覧ビュー、引用キー補完、簡易文献一覧に対応します。
-
-使用前に **設定 → Cite → Reference folder** で、BibTeXコードブロックを含む文献ノートのフォルダを指定してください。未設定時はVault全体を走査せず、索引作成を行いません。文献一覧を挿入する位置には、独立した段落として `\bibliography` を記述します。
-
-文献スタイルは読みやすさを目的とした簡易形式であり、BibTeXやCSLの厳密な再現ではありません。Pandoc形式は `[@key]` と `[@a; @b]` のみ対応し、ページ指定などは初回版の対象外です。処理はすべてローカルで行われ、通信・テレメトリ・広告・アカウント要求はありません。
 
 ## License
 
