@@ -32,3 +32,18 @@
   border: none;
   margin: 4px -8px 0;
 }
+
+.cite-settings-warning {
+  color: var(--text-warning);
+  font-size: var(--font-ui-small);
+}
+
+.cite-settings-errors {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: var(--size-4-2) 0;
+}
+
+.cite-settings-errors ul {
+  margin-block: var(--size-4-1) 0;
+}

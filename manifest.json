@@ -1,10 +1,10 @@
 {
-  "id": "obsidian-cite",
+  "id": "cite",
   "name": "Cite",
   "version": "0.1.0",
-  "minAppVersion": "1.4.0",
-  "description": "Enable \\cite{key} citation syntax that links to Obsidian notes",
+  "minAppVersion": "1.12.7",
+  "description": "Render and link LaTeX or Pandoc citations from BibTeX blocks in your notes.",
   "author": "yuto",
-  "authorUrl": "",
+  "authorUrl": "https://github.com/PMGWork",
   "isDesktopOnly": false
 }

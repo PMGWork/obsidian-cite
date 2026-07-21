@@ -10,6 +10,9 @@
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "types": ["node", "vitest/globals"],
     "lib": [
       "DOM",
       "ES5",
@@ -17,7 +20,5 @@
       "ES7"
     ]
   },
-  "include": [
-    "**/*.ts"
-  ]
+  "include": ["main.ts", "src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
 }
