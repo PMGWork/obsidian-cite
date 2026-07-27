@@ -4,7 +4,7 @@
 
 Cite renders LaTeX- or Pandoc-style citations in Obsidian and links them to reference notes containing BibTeX. It works in Live Preview and Reading view, provides citation-key completion, and can render a lightweight bibliography.
 
-> Cite 0.1.0 requires Obsidian 1.12.7 or later. Desktop, iOS, and Android are supported.
+> Cite 0.1.1 requires Obsidian 1.12.7 or later. Desktop, iOS, and Android are supported.
 
 ## Features
 
@@ -71,7 +71,7 @@ npm ci
 npm run dev
 ```
 
-Run the complete release check with `npm run check`. Production `main.js` is generated locally and attached to GitHub Releases; it is intentionally not committed.
+Run the complete release check with `npm run check`. Production `main.js` is generated locally, committed for review, and attached to GitHub Releases.
 
 ## License
 

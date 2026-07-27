@@ -249,8 +249,17 @@ function normalizeEntryType(entryType: string): string {
 }
 
 function stringifyValue(value: unknown): string {
-  if (Array.isArray(value)) return value.map(String).join(", ");
-  return value === null || value === undefined ? "" : String(value);
+  if (Array.isArray(value)) return value.map(stringifyValue).join(", ");
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string"
+    || typeof value === "number"
+    || typeof value === "boolean"
+    || typeof value === "bigint") {
+    return String(value);
+  }
+  if (typeof value === "symbol") return value.description ?? "";
+  if (typeof value === "function") return value.name;
+  return JSON.stringify(value) ?? "";
 }
 
 function stripAffiliation(raw: string): string {

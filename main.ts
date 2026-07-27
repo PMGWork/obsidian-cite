@@ -14,7 +14,7 @@ export default class CitePlugin extends Plugin {
   settings!: CiteSettings;
   resolver!: CitationResolver;
   private sourceCache = new Map<string, { mtime: number; text: string }>();
-  private reindexTimer: ReturnType<typeof setTimeout> | null = null;
+  private reindexTimer: number | null = null;
   private settingTab!: CiteSettingTab;
 
   async onload(): Promise<void> {
@@ -53,7 +53,7 @@ export default class CitePlugin extends Plugin {
     });
     this.registerEditorExtension(buildEditorExtension(this.resolver, this.app, this.settings));
     this.register(() => {
-      if (this.reindexTimer !== null) clearTimeout(this.reindexTimer);
+      if (this.reindexTimer !== null) window.clearTimeout(this.reindexTimer);
     });
 
     const initialize = async (): Promise<void> => {
@@ -72,8 +72,8 @@ export default class CitePlugin extends Plugin {
   }
 
   scheduleReferenceReindex(delay = 100): void {
-    if (this.reindexTimer !== null) clearTimeout(this.reindexTimer);
-    this.reindexTimer = setTimeout(() => {
+    if (this.reindexTimer !== null) window.clearTimeout(this.reindexTimer);
+    this.reindexTimer = window.setTimeout(() => {
       this.reindexTimer = null;
       void this.reindexReferences();
     }, delay);
@@ -83,7 +83,7 @@ export default class CitePlugin extends Plugin {
     const applied = await this.resolver.initialize();
     if (!applied) return;
     this.refreshOpenNotes();
-    if (this.settingTab.containerEl.isConnected) this.settingTab.display();
+    if (this.settingTab.containerEl.isConnected) this.settingTab.refresh();
   }
 
   refreshOpenNotes(): void {

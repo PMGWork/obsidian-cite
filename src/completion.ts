@@ -6,6 +6,7 @@ import {
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import { EditorState, type Extension } from "@codemirror/state";
+import { createObsidianFragment } from "./dom";
 import type { CitationResolver } from "./resolver";
 import type { CiteSettings } from "./settings";
 
@@ -58,18 +59,15 @@ export function buildCitationCompletionExtension(
         {
           render(completion: Completion, _state, view) {
             if (typeof completion.apply !== "string") return null;
-            const element = view.dom.ownerDocument.createElement("span");
-            element.className = "cite-completion-key";
-            element.textContent = completion.apply;
-            return element;
+            return createObsidianFragment(view.dom.ownerDocument)
+              .createSpan({ cls: "cite-completion-key", text: completion.apply });
           },
           position: 55,
         },
         {
           render(_completion, _state, view) {
-            const element = view.dom.ownerDocument.createElement("hr");
-            element.className = "cite-completion-separator";
-            return element;
+            return createObsidianFragment(view.dom.ownerDocument)
+              .createEl("hr", { cls: "cite-completion-separator" });
           },
           position: 90,
         },

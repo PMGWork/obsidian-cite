@@ -4,7 +4,7 @@
 
 Cite 是一款 Obsidian 插件，可读取笔记中的 BibTeX 条目，渲染 LaTeX 或 Pandoc 格式的引用，并将引用链接到对应的文献笔记。插件支持实时预览和阅读视图，并提供引用键补全及轻量级参考文献列表。
 
-> Cite 0.1.0 需要 Obsidian 1.12.7 或更高版本，支持桌面端、iOS 和 Android。
+> Cite 0.1.1 需要 Obsidian 1.12.7 或更高版本，支持桌面端、iOS 和 Android。
 
 ## 功能
 
@@ -73,7 +73,7 @@ npm ci
 npm run dev
 ```
 
-使用 `npm run check` 执行完整的发布前检查。生产版 `main.js` 在本地生成并附加到 GitHub Release，不提交到代码仓库。
+使用 `npm run check` 执行完整的发布前检查。生产版 `main.js` 在本地生成、提交以供审查，并附加到 GitHub Release。
 
 ## 许可证
 

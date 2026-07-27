@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, TFolder } from "obsidian";
 import {
   formatBibliographyPublication,
   parseBibtexEntries,
@@ -52,11 +52,20 @@ export class CitationResolver {
   }
 
   private getReferenceFiles(): TFile[] {
-    const folder = this.getSettings().referenceFolder;
-    if (!folder) return [];
-    return this.app.vault.getMarkdownFiles()
-      .filter((file) => file.path.startsWith(`${folder}/`))
-      .sort((a, b) => a.path.localeCompare(b.path));
+    const folderPath = this.getSettings().referenceFolder;
+    if (!folderPath) return [];
+    const folder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!(folder instanceof TFolder)) return [];
+
+    const files: TFile[] = [];
+    const visit = (current: TFolder): void => {
+      for (const child of current.children) {
+        if (child instanceof TFolder) visit(child);
+        else if (child instanceof TFile && child.extension === "md") files.push(child);
+      }
+    };
+    visit(folder);
+    return files.sort((a, b) => a.path.localeCompare(b.path));
   }
 
   async initialize(): Promise<boolean> {

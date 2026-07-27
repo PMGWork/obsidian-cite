@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -19,6 +21,13 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: node scripts/check-version.mjs "$GITHUB_REF_NAME"
+      - name: Attest release assets
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
