@@ -1,6 +1,6 @@
 {
   "name": "obsidian-cite",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Render and link LaTeX or Pandoc citations from BibTeX blocks in your notes",
   "main": "main.js",
   "scripts": {
@@ -14,14 +14,14 @@
   },
   "devDependencies": {
     "@codemirror/autocomplete": "6.20.3",
-    "@codemirror/state": "6.5.0",
-    "@codemirror/view": "6.38.6",
+    "@codemirror/state": "6.7.0",
+    "@codemirror/view": "6.43.5",
     "@eslint/js": "9.32.0",
     "@types/node": "22.17.0",
-    "builtin-modules": "4.0.0",
     "esbuild": "0.25.8",
     "eslint": "9.32.0",
-    "obsidian": "1.12.3",
+    "eslint-plugin-obsidianmd": "0.4.1",
+    "obsidian": "https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/cc1744324150c632416857c98964f87b1574a5fc",
     "tslib": "2.8.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.65.0",

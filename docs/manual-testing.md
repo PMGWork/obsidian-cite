@@ -4,7 +4,8 @@ Run this checklist against the production build before publishing a release.
 
 ## Platforms
 
-- [ ] Obsidian 1.12.7 or later on desktop.
+- [ ] Obsidian 1.12.7 on desktop using the legacy settings-tab fallback.
+- [ ] Obsidian 1.13.0 or later on desktop using searchable declarative settings.
 - [ ] Obsidian 1.12.7 or later on iOS.
 - [ ] Obsidian 1.12.7 or later on Android.
 
@@ -31,4 +32,5 @@ Run this checklist against the production build before publishing a release.
 - [ ] `npm ci` and `npm run check` succeed from a fresh clone.
 - [ ] BRAT installs the release using the `cite` plugin folder.
 - [ ] The release contains `main.js`, `manifest.json`, and `styles.css`.
+- [ ] `gh attestation verify` succeeds for each downloaded release asset.
 - [ ] A fresh install and an update from the previous beta both load without console errors.

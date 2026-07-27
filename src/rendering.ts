@@ -21,6 +21,7 @@ import {
   type CitationOccurrence,
 } from "./citations";
 import { buildCitationCompletionExtension } from "./completion";
+import { createObsidianFragment } from "./dom";
 import type { CitationResolver } from "./resolver";
 import type { CiteSettings } from "./settings";
 
@@ -81,24 +82,23 @@ function buildCiteElement(
   entries: CiteEntry[],
   sourcePath: string,
 ): HTMLElement {
-  const span = document.createElement("span");
-  span.className = "cite-inline";
+  const span = createObsidianFragment(document).createSpan({ cls: "cite-inline" });
   span.append("[");
   entries.forEach((entry, index) => {
     if (index > 0) span.append(", ");
     if (entry.filePath) {
-      const anchor = document.createElement("a");
-      anchor.className = "internal-link cite-link";
-      anchor.textContent = entry.displayText;
-      anchor.title = entry.key;
+      const anchor = span.createEl("a", {
+        cls: "internal-link cite-link",
+        text: entry.displayText,
+        title: entry.key,
+      });
       bindCitationLink(app, anchor, entry.filePath, sourcePath);
-      span.append(anchor);
     } else {
-      const unresolved = document.createElement("span");
-      unresolved.className = "cite-unresolved";
-      unresolved.textContent = entry.displayText;
-      unresolved.title = `Unresolved: ${entry.key}`;
-      span.append(unresolved);
+      span.createSpan({
+        cls: "cite-unresolved",
+        text: entry.displayText,
+        title: `Unresolved: ${entry.key}`,
+      });
     }
   });
   span.append("]");
@@ -147,22 +147,19 @@ function buildBibliographyElement(
   entries: BibliographyEntry[],
   sourcePath: string,
 ): HTMLElement {
-  const container = document.createElement("span");
-  container.className = "cite-bibliography";
+  const container = createObsidianFragment(document).createSpan({ cls: "cite-bibliography" });
   entries.forEach((entry, index) => {
-    if (index > 0) container.append(document.createElement("br"));
-    const row = document.createElement("span");
-    row.className = "cite-bibliography-item";
+    if (index > 0) container.createEl("br");
+    const row = container.createSpan({ cls: "cite-bibliography-item" });
     if (entry.filePath) {
-      const anchor = document.createElement("a");
-      anchor.className = "internal-link cite-bibliography-link";
-      anchor.textContent = entry.label;
+      const anchor = row.createEl("a", {
+        cls: "internal-link cite-bibliography-link",
+        text: entry.label,
+      });
       bindCitationLink(app, anchor, entry.filePath, sourcePath);
-      row.append(anchor);
     } else {
-      row.textContent = entry.label;
+      row.setText(entry.label);
     }
-    container.append(row);
   });
   return container;
 }
@@ -365,7 +362,7 @@ export async function processReadingMode(
     const parent = textNode.parentNode;
     if (!parent) continue;
     const text = textNode.textContent ?? "";
-    const fragment = element.ownerDocument.createDocumentFragment();
+    const fragment = createObsidianFragment(element.ownerDocument);
     const regex = settings.citationSyntax === "pandoc"
       ? /\[((?:@[^\]\s;]+(?:\s*;\s*)?)+)\]/g
       : /\\cite\{([^}]+)\}/g;
