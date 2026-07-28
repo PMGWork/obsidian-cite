@@ -18,6 +18,14 @@ describe("settings", () => {
     });
   });
 
+  it.each([
+    ["jplain", "plain"],
+    ["jabbrv", "abbrv"],
+    ["junsrt", "unsrt"],
+  ] as const)("normalizes the Japanese %s alias", (stored, expected) => {
+    expect(sanitizeSettings({ bibliographyStyle: stored }).bibliographyStyle).toBe(expected);
+  });
+
   it("repairs invalid stored settings", () => {
     expect(sanitizeSettings({
       citationSyntax: "unknown",

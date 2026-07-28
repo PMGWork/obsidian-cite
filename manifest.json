@@ -1,7 +1,7 @@
 {
   "id": "cite",
   "name": "Cite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.12.7",
   "description": "Render and link LaTeX or Pandoc citations from BibTeX blocks in your notes.",
   "author": "yuto",

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App } from "obsidian";
 import { TFile, TFolder } from "obsidian";
 import { CitationResolver } from "../src/resolver";
+import { createCitationDocumentIndex } from "../src/citations";
+import { buildDocumentPresentation } from "../src/rendering";
 import type { CiteSettings } from "../src/settings";
 
 interface FakeFile extends TFile {
@@ -38,6 +40,17 @@ function makeFolder(path: string, children: Array<FakeFile | FakeFolder> = []): 
 
 function bib(key: string, title = key): string {
   return `\`\`\`bibtex\n@article{${key}, title = {${title}}, year = {2026}}\n\`\`\``;
+}
+
+function authoredBib(key: string, author: string, year: string, title = key): string {
+  return `\`\`\`bibtex
+@article{${key},
+  author = {${author}},
+  title = {${title}},
+  journal = {Journal},
+  year = {${year}}
+}
+\`\`\``;
 }
 
 describe("CitationResolver", () => {
@@ -175,5 +188,65 @@ describe("CitationResolver", () => {
     expect(await first).toBe(false);
     expect(resolver.findNote("current")).toBe(file);
     expect(resolver.findNote("stale")).toBeNull();
+  });
+
+  it("sorts alphabetical styles and keeps unsrt in citation order", async () => {
+    const lang = makeFile("References/lang.md");
+    const kashiwara = makeFile("References/kashiwara.md");
+    files.push(lang, kashiwara);
+    content.set(lang.path, authoredBib("lang", "Lang, Serge", "2002"));
+    content.set(
+      kashiwara.path,
+      authoredBib("kn", "Kashiwara, Masaki and Nakashima, Toshiyuki", "1994"),
+    );
+    const resolver = new CitationResolver(app, () => settings);
+    await resolver.initialize();
+    const source = "\\cite{lang}\\cite{kn}\n\\bibliography";
+
+    settings.bibliographyStyle = "plain";
+    const alphabetical = buildDocumentPresentation(
+      createCitationDocumentIndex(source, settings),
+      resolver,
+      settings,
+    );
+    expect(alphabetical.citations.get(0)?.[0]?.displayText).toBe("2");
+    const alphabeticalBibliography = [...alphabetical.bibliographies.values()][0];
+    expect(alphabeticalBibliography?.map((entry) => entry.number)).toEqual([1, 2]);
+    expect(alphabeticalBibliography?.[0]?.filePath).toBe(kashiwara.path);
+
+    settings.bibliographyStyle = "unsrt";
+    const unsorted = buildDocumentPresentation(
+      createCitationDocumentIndex(source, settings),
+      resolver,
+      settings,
+    );
+    expect(unsorted.citations.get(0)?.[0]?.displayText).toBe("1");
+    expect([...unsorted.bibliographies.values()][0]?.[0]?.filePath).toBe(lang.path);
+  });
+
+  it("uses alpha labels in citations and bibliography entries", async () => {
+    const lang = makeFile("References/lang.md");
+    const kashiwara = makeFile("References/kashiwara.md");
+    files.push(lang, kashiwara);
+    content.set(lang.path, authoredBib("lang", "Lang, Serge", "2002"));
+    content.set(
+      kashiwara.path,
+      authoredBib("kn", "Kashiwara, Masaki and Nakashima, Toshiyuki", "1994"),
+    );
+    settings.bibliographyStyle = "alpha";
+    const resolver = new CitationResolver(app, () => settings);
+    await resolver.initialize();
+    const source = "\\cite{lang,kn}\n\\bibliography";
+    const presentation = buildDocumentPresentation(
+      createCitationDocumentIndex(source, settings),
+      resolver,
+      settings,
+    );
+
+    expect(presentation.citations.get(0)?.map((entry) => entry.displayText)).toEqual(["Lan02", "KN94"]);
+    expect([...presentation.bibliographies.values()][0]?.map((entry) => entry.label)).toEqual([
+      expect.stringContaining("[KN94]"),
+      expect.stringContaining("[Lan02]"),
+    ]);
   });
 });

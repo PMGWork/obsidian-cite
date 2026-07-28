@@ -18,6 +18,7 @@ import {
   createCitationDocumentIndex,
   hasCitation,
   type BibliographyOccurrence,
+  type CitationDocumentIndex,
   type CitationOccurrence,
 } from "./citations";
 import { buildCitationCompletionExtension } from "./completion";
@@ -70,7 +71,7 @@ function bindCitationLink(
   });
 }
 
-interface CiteEntry {
+export interface CiteEntry {
   key: string;
   displayText: string;
   filePath: string | null;
@@ -201,15 +202,93 @@ function toCiteEntries(occurrence: CitationOccurrence, resolver: CitationResolve
   }));
 }
 
-function toBibliographyEntries(
-  occurrence: BibliographyOccurrence,
+export interface DocumentPresentation {
+  citations: Map<number, CiteEntry[]>;
+  bibliographies: Map<number, BibliographyEntry[]>;
+}
+
+function usesCitationOrder(settings: CiteSettings): boolean {
+  return settings.bibliographyStyle === "unsrt" || settings.bibliographyStyle === "ieeetr";
+}
+
+function disambiguateLabels(
+  orderedKeys: string[],
+  labels: Map<string, string>,
+  settings: CiteSettings,
+): Map<string, string> {
+  if (settings.bibliographyStyle !== "alpha" && settings.bibliographyStyle !== "apalike") {
+    return labels;
+  }
+  const counts = new Map<string, number>();
+  for (const key of orderedKeys) {
+    const label = labels.get(key) ?? key;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  return new Map(orderedKeys.map((key) => {
+    const label = labels.get(key) ?? key;
+    if ((counts.get(label) ?? 0) < 2) return [key, label];
+    const index = seen.get(label) ?? 0;
+    seen.set(label, index + 1);
+    const suffix = index < 26 ? String.fromCharCode(97 + index) : String(index + 1);
+    return [key, `${label}${suffix}`];
+  }));
+}
+
+export function buildDocumentPresentation(
+  index: CitationDocumentIndex,
   resolver: CitationResolver,
   settings: CiteSettings,
-): BibliographyEntry[] {
-  return occurrence.entries.map(({ key, number }) => ({
-    number,
-    ...resolver.formatBibEntry(key, number, settings),
-  }));
+): DocumentPresentation {
+  const presentation: DocumentPresentation = {
+    citations: new Map(),
+    bibliographies: new Map(),
+  };
+  let segmentStart = 0;
+
+  const addSegment = (
+    citations: CitationOccurrence[],
+    bibliography?: BibliographyOccurrence,
+  ): void => {
+    const citationOrder = [...new Set(citations.flatMap((citation) => citation.keys))];
+    const orderedKeys = usesCitationOrder(settings)
+      ? citationOrder
+      : resolver.sortBibliographyKeys(citationOrder);
+    const numbers = new Map(orderedKeys.map((key, index) => [key, index + 1]));
+    const rawLabels = new Map(orderedKeys.map((key) => [
+      key,
+      resolver.getCitationLabel(key, numbers.get(key) ?? 1, settings.bibliographyStyle),
+    ]));
+    const labels = disambiguateLabels(orderedKeys, rawLabels, settings);
+
+    for (const citation of citations) {
+      presentation.citations.set(citation.from, citation.keys.map((key) => ({
+        key,
+        displayText: labels.get(key) ?? key,
+        filePath: resolver.findNote(key)?.path ?? null,
+      })));
+    }
+    if (bibliography) {
+      presentation.bibliographies.set(bibliography.from, orderedKeys.map((key) => {
+        const number = numbers.get(key) ?? 1;
+        return {
+          number,
+          ...resolver.formatBibEntry(key, number, settings, labels.get(key)),
+        };
+      }));
+    }
+  };
+
+  for (const bibliography of index.bibliographies) {
+    addSegment(
+      index.citations.filter((citation) =>
+        citation.from >= segmentStart && citation.from < bibliography.from),
+      bibliography,
+    );
+    segmentStart = bibliography.to;
+  }
+  addSegment(index.citations.filter((citation) => citation.from >= segmentStart));
+  return presentation;
 }
 
 function intersectsSelection(view: EditorView, from: number, to: number): boolean {
@@ -229,6 +308,7 @@ function buildDecorations(
 ): DecorationSet {
   const text = view.state.doc.toString();
   const index = createCitationDocumentIndex(text, settings);
+  const presentation = buildDocumentPresentation(index, resolver, settings);
   const sourcePath = getEditorSourcePath(view);
   const pending: Array<{ from: number; to: number; decoration: Decoration }> = [];
 
@@ -237,7 +317,13 @@ function buildDecorations(
     pending.push({
       from: citation.from,
       to: citation.to,
-      decoration: Decoration.replace({ widget: new CiteWidget(app, toCiteEntries(citation, resolver), sourcePath) }),
+      decoration: Decoration.replace({
+        widget: new CiteWidget(
+          app,
+          presentation.citations.get(citation.from) ?? toCiteEntries(citation, resolver),
+          sourcePath,
+        ),
+      }),
     });
   }
   for (const bibliography of index.bibliographies) {
@@ -249,7 +335,7 @@ function buildDecorations(
       decoration: Decoration.replace({
         widget: new BibliographyWidget(
           app,
-          toBibliographyEntries(bibliography, resolver, settings),
+          presentation.bibliographies.get(bibliography.from) ?? [],
           sourcePath,
         ),
       }),
@@ -325,6 +411,7 @@ export async function processReadingMode(
   const textContent = element.textContent ?? "";
   if (!hasCitation(textContent, settings) && !textContent.includes("\\bibliography")) return;
   const documentIndex = createCitationDocumentIndex(sourceText, settings);
+  const presentation = buildDocumentPresentation(documentIndex, resolver, settings);
   const section = context.getSectionInfo(element);
   const sectionOffset = section ? lineStartOffset(sourceText, section.lineStart) : 0;
   let bibliographyCursor = sectionOffset;
@@ -338,7 +425,7 @@ export async function processReadingMode(
     paragraph.replaceWith(buildBibliographyElement(
       element.ownerDocument,
       app,
-      toBibliographyEntries(occurrence, resolver, settings),
+      presentation.bibliographies.get(occurrence.from) ?? [],
       context.sourcePath,
     ));
   }
@@ -378,7 +465,7 @@ export async function processReadingMode(
         fragment.append(buildCiteElement(
           element.ownerDocument,
           app,
-          toCiteEntries(occurrence, resolver),
+          presentation.citations.get(occurrence.from) ?? toCiteEntries(occurrence, resolver),
           context.sourcePath,
         ));
       }

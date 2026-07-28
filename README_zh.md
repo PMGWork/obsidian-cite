@@ -4,7 +4,7 @@
 
 Cite 是一款 Obsidian 插件，可读取笔记中的 BibTeX 条目，渲染 LaTeX 或 Pandoc 格式的引用，并将引用链接到对应的文献笔记。插件支持实时预览和阅读视图，并提供引用键补全及轻量级参考文献列表。
 
-> Cite 0.1.1 需要 Obsidian 1.12.7 或更高版本，支持桌面端、iOS 和 Android。
+> Cite 0.1.2 需要 Obsidian 1.12.7 或更高版本，支持桌面端、iOS 和 Android。
 
 ## 功能
 
@@ -13,6 +13,7 @@ Cite 是一款 Obsidian 插件，可读取笔记中的 BibTeX 条目，渲染 La
 - 在 `\bibliography` 所在位置生成参考文献列表
 - 从一篇文献笔记中解析一个或多个 BibTeX 条目
 - 在文献笔记被创建、编辑、移动或删除时自动重建索引
+- 根据Obsidian的显示语言，以英语、日语或简体中文显示设置界面
 - 不转换代码、frontmatter 和数学公式中的示例
 
 ## 设置方法
@@ -48,7 +49,7 @@ Cite 支持常见的 `article`、`book`、`inproceedings`／`conference`、`inco
 
 解析器不会计算 BibTeX 字符串宏、`#` 拼接、`crossref` 继承或 LaTeX 文本格式命令。不受支持的内容不会被发送到外部服务。
 
-参考文献样式是以可读性为目标的轻量近似格式。**Plain**、**Abbreviated**、**Unsorted**、**Alphabetic label**、**IEEE-like** 和 **ACM-like** 并不是完整的 BibTeX 或 CSL 实现，不适合需要严格符合出版格式的场景。
+参考文献支持 **Plain / jplain**、**Abbreviated / jabbrv**、**Unsorted / junsrt**、**Alphabetic label**、**IEEE Transactions**、**ACM**、**SIAM** 和 **APA-like** 样式。Plain 系列、Alpha、ACM、SIAM 和 APA-like 按作者排序；Unsorted 和 IEEE Transactions 保留引用顺序。
 
 当引用键重复时，Cite 会按照笔记路径的字母顺序采用第一条记录，并在设置页面中显示重复项。
 

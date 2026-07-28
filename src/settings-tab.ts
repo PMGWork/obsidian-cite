@@ -6,6 +6,7 @@ import {
   type SettingDefinitionItem,
 } from "obsidian";
 import type { CitationResolver } from "./resolver";
+import { getTranslations, type CiteTranslations } from "./i18n";
 import {
   normalizeReferenceFolder,
   type BibliographyStyle,
@@ -22,33 +23,28 @@ export interface CitePluginHost extends Plugin {
   reindexReferences(): Promise<void>;
 }
 
-const BIBLIOGRAPHY_STYLE_LABELS: Record<BibliographyStyle, string> = {
-  plain: "Plain (lightweight)",
-  abbrv: "Abbreviated (lightweight)",
-  unsrt: "Unsorted (lightweight)",
-  alpha: "Alphabetic label (lightweight)",
-  ieeetr: "IEEE-like",
-  acm: "ACM-like",
-};
-
 type CiteSettingKey = keyof CiteSettings;
 
-function configureIndexStatus(setting: Setting, plugin: CitePluginHost): void {
+function configureIndexStatus(
+  setting: Setting,
+  plugin: CitePluginHost,
+  t: CiteTranslations,
+): void {
   const stats = plugin.resolver.stats;
-  setting.setName("Reference index");
+  setting.setName(t.referenceIndex);
   if (!plugin.settings.referenceFolder) {
-    setting.setDesc("Choose a reference folder before citations can be resolved. Cite does not scan the entire vault.");
+    setting.setDesc(t.referenceFolderRequired);
   } else {
     const details = [
-      `${stats.files} files`,
-      `${stats.entries} entries`,
-      `${stats.duplicateKeys.length} duplicate keys`,
-      `${stats.parseErrors.length} parse errors`,
+      t.files(stats.files),
+      t.entries(stats.entries),
+      t.duplicateKeys(stats.duplicateKeys.length),
+      t.parseErrors(stats.parseErrors.length),
     ].join(" · ");
     setting.setDesc(details);
   }
   setting.addButton((button) => button
-    .setButtonText("Reindex")
+    .setButtonText(t.reindex)
     .onClick(async () => {
       button.setDisabled(true);
       await plugin.reindexReferences();
@@ -58,19 +54,19 @@ function configureIndexStatus(setting: Setting, plugin: CitePluginHost): void {
   if (stats.duplicateKeys.length > 0) {
     setting.descEl.createEl("p", {
       cls: "cite-settings-warning",
-      text: `Duplicate keys (first path wins): ${stats.duplicateKeys.join(", ")}`,
+      text: t.duplicateKeysWarning(stats.duplicateKeys.join(", ")),
     });
   }
   if (stats.parseErrors.length > 0) {
     const details = setting.descEl.createEl("details", { cls: "cite-settings-errors" });
-    details.createEl("summary", { text: "BibTeX parse errors" });
+    details.createEl("summary", { text: t.bibtexParseErrors });
     const list = details.createEl("ul");
     for (const error of stats.parseErrors) list.createEl("li", { text: error });
   }
 }
 
 function addIndexStatus(container: HTMLElement, plugin: CitePluginHost): void {
-  configureIndexStatus(new Setting(container), plugin);
+  configureIndexStatus(new Setting(container), plugin, getTranslations());
 }
 
 export class CiteSettingTab extends PluginSettingTab {
@@ -79,10 +75,11 @@ export class CiteSettingTab extends PluginSettingTab {
   }
 
   getSettingDefinitions(): SettingDefinitionItem<CiteSettingKey>[] {
+    const t = getTranslations();
     return [
       {
-        name: "Citation syntax",
-        desc: "Inline citation notation to parse and complete",
+        name: t.citationSyntax,
+        desc: t.citationSyntaxDesc,
         control: {
           type: "dropdown",
           key: "citationSyntax",
@@ -93,27 +90,27 @@ export class CiteSettingTab extends PluginSettingTab {
         },
       },
       {
-        name: "Reference folder",
-        desc: "Folder containing notes with fenced BibTeX blocks. Leave empty to disable indexing.",
+        name: t.referenceFolder,
+        desc: t.referenceFolderDesc,
         control: {
           type: "text",
           key: "referenceFolder",
-          placeholder: "References",
+          placeholder: t.referenceFolderPlaceholder,
         },
       },
       {
-        name: "Bibliography style",
-        desc: "Lightweight formatting preset; these are not full BibTeX or CSL implementations",
+        name: t.bibliographyStyle,
+        desc: t.bibliographyStyleDesc,
         control: {
           type: "dropdown",
           key: "bibliographyStyle",
-          options: BIBLIOGRAPHY_STYLE_LABELS,
+          options: t.bibliographyStyles,
         },
       },
       {
-        name: "Reference index",
-        desc: "Index status, duplicate keys, and BibTeX parse errors",
-        render: (setting) => configureIndexStatus(setting, this.plugin),
+        name: t.referenceIndex,
+        desc: t.referenceIndexDesc,
+        render: (setting) => configureIndexStatus(setting, this.plugin, t),
       },
     ];
   }
@@ -143,7 +140,7 @@ export class CiteSettingTab extends PluginSettingTab {
       return;
     }
     if (key === "bibliographyStyle") {
-      if (typeof value !== "string" || !(value in BIBLIOGRAPHY_STYLE_LABELS)) return;
+      if (typeof value !== "string" || !(value in getTranslations().bibliographyStyles)) return;
       this.plugin.settings.bibliographyStyle = value as BibliographyStyle;
       await this.plugin.saveSettings();
       this.plugin.refreshOpenNotes();
@@ -158,11 +155,12 @@ export class CiteSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl } = this;
+    const t = getTranslations();
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Citation syntax")
-      .setDesc("Inline citation notation to parse and complete")
+      .setName(t.citationSyntax)
+      .setDesc(t.citationSyntaxDesc)
       .addDropdown((dropdown) => dropdown
         .addOption("latex", "\\cite{key}")
         .addOption("pandoc", "[@key]")
@@ -174,10 +172,10 @@ export class CiteSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName("Reference folder")
-      .setDesc("Folder containing notes with fenced BibTeX blocks. Leave empty to disable indexing.")
+      .setName(t.referenceFolder)
+      .setDesc(t.referenceFolderDesc)
       .addText((text) => text
-        .setPlaceholder("References")
+        .setPlaceholder(t.referenceFolderPlaceholder)
         .setValue(this.plugin.settings.referenceFolder)
         .onChange(async (value) => {
           this.plugin.settings.referenceFolder = normalizeReferenceFolder(value);
@@ -186,10 +184,10 @@ export class CiteSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName("Bibliography style")
-      .setDesc("Lightweight formatting preset; these are not full BibTeX or CSL implementations")
+      .setName(t.bibliographyStyle)
+      .setDesc(t.bibliographyStyleDesc)
       .addDropdown((dropdown) => {
-        for (const [value, label] of Object.entries(BIBLIOGRAPHY_STYLE_LABELS)) {
+        for (const [value, label] of Object.entries(t.bibliographyStyles)) {
           dropdown.addOption(value, label);
         }
         return dropdown

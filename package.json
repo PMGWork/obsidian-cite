@@ -1,6 +1,6 @@
 {
   "name": "obsidian-cite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Render and link LaTeX or Pandoc citations from BibTeX blocks in your notes",
   "main": "main.js",
   "scripts": {

@@ -33,3 +33,7 @@ export class TFolder {
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/{2,}/g, "/");
 }
+
+export function getLanguage(): string {
+  return "en";
+}

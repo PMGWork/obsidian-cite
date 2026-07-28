@@ -7,7 +7,9 @@ export type BibliographyStyle =
   | "unsrt"
   | "alpha"
   | "ieeetr"
-  | "acm";
+  | "acm"
+  | "siam"
+  | "apalike";
 
 export interface CiteSettings {
   citationSyntax: CitationSyntax;
@@ -29,7 +31,14 @@ const BIBLIOGRAPHY_STYLES = new Set<BibliographyStyle>([
   "alpha",
   "ieeetr",
   "acm",
+  "siam",
+  "apalike",
 ]);
+const BIBLIOGRAPHY_STYLE_ALIASES: Record<string, BibliographyStyle> = {
+  jplain: "plain",
+  jabbrv: "abbrv",
+  junsrt: "unsrt",
+};
 
 export function normalizeReferenceFolder(value: string): string {
   const trimmed = value.trim().replace(/^\/+|\/+$/g, "");
@@ -45,9 +54,11 @@ export function sanitizeSettings(value: unknown): CiteSettings {
     CITATION_SYNTAXES.has(stored.citationSyntax as CitationSyntax)
     ? stored.citationSyntax as CitationSyntax
     : DEFAULT_SETTINGS.citationSyntax;
-  const bibliographyStyle = typeof stored.bibliographyStyle === "string" &&
-    BIBLIOGRAPHY_STYLES.has(stored.bibliographyStyle as BibliographyStyle)
-    ? stored.bibliographyStyle as BibliographyStyle
+  const storedBibliographyStyle = typeof stored.bibliographyStyle === "string"
+    ? BIBLIOGRAPHY_STYLE_ALIASES[stored.bibliographyStyle] ?? stored.bibliographyStyle
+    : "";
+  const bibliographyStyle = BIBLIOGRAPHY_STYLES.has(storedBibliographyStyle as BibliographyStyle)
+    ? storedBibliographyStyle as BibliographyStyle
     : DEFAULT_SETTINGS.bibliographyStyle;
   const referenceFolder = typeof stored.referenceFolder === "string"
     ? normalizeReferenceFolder(stored.referenceFolder)

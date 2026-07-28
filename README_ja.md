@@ -4,7 +4,7 @@
 
 Citeは、ノート内のBibTeXを参照し、LaTeX形式またはPandoc形式の引用を表示して文献ノートへリンクするObsidianプラグインです。Live Previewと閲覧ビューに対応し、引用キーの補完と簡易文献一覧を利用できます。
 
-> Cite 0.1.1にはObsidian 1.12.7以降が必要です。デスクトップ、iOS、Androidに対応します。
+> Cite 0.1.2にはObsidian 1.12.7以降が必要です。デスクトップ、iOS、Androidに対応します。
 
 ## 機能
 
@@ -13,6 +13,7 @@ Citeは、ノート内のBibTeXを参照し、LaTeX形式またはPandoc形式�
 - `\bibliography` の位置に文献一覧を表示
 - 1つの文献ノートに含まれる複数のBibTeXエントリを解決
 - 文献ノートの作成・編集・移動・削除時に索引を自動更新
+- Obsidianの表示言語に合わせて設定画面を英語・日本語・簡体字中国語で表示
 - コード、frontmatter、数式内の記述は変換対象外
 
 ## 設定方法
@@ -48,7 +49,7 @@ Citeは、ノート内のBibTeXを参照し、LaTeX形式またはPandoc形式�
 
 BibTeXの文字列マクロ、`#`による連結、`crossref`による継承、LaTeXの文字装飾コマンドは評価しません。未対応の記述が外部へ送信されることはありません。
 
-文献スタイルは読みやすさを目的とした簡易形式です。**Plain**、**Abbreviated**、**Unsorted**、**Alphabetic label**、**IEEE-like**、**ACM-like**は、BibTeXやCSLを厳密に再現するものではありません。投稿規定どおりの厳密な組版が必要な用途には使用しないでください。
+文献スタイルは、**Plain / jplain**、**Abbreviated / jabbrv**、**Unsorted / junsrt**、**Alphabetic label**、**IEEE Transactions**、**ACM**、**SIAM**、**APA-like**に対応しています。Plain系、Alpha、ACM、SIAM、APA-likeは著者順、UnsortedとIEEE Transactionsは引用順に並びます。
 
 引用キーが重複した場合は、ノートパスのアルファベット順で最初のエントリを採用し、重複内容を設定画面に表示します。
 

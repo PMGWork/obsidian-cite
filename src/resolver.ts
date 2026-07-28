@@ -1,12 +1,14 @@
 import { App, TFile, TFolder } from "obsidian";
 import {
   formatBibliographyPublication,
+  getAuthorSortKey,
+  getBibliographyLabel,
   parseBibtexEntries,
   renderBibliographyStyle,
   stringifyAuthors,
   type BibtexEntry,
 } from "./bibtex";
-import type { CiteSettings } from "./settings";
+import type { BibliographyStyle, CiteSettings } from "./settings";
 
 interface IndexedEntry {
   path: string;
@@ -122,20 +124,76 @@ export class CitationResolver {
     return file instanceof TFile ? file : null;
   }
 
-  formatBibEntry(key: string, number: number, settings: CiteSettings): FormattedBibEntry {
+  sortBibliographyKeys(keys: string[]): string[] {
+    return [...keys].sort((a, b) => {
+      const first = this.citationKeyIndex.get(a);
+      const second = this.citationKeyIndex.get(b);
+      if (!first && !second) return a.localeCompare(b);
+      if (!first) return 1;
+      if (!second) return -1;
+      const firstParts = [
+        getAuthorSortKey(first.fields.author),
+        first.fields.year ?? "",
+        first.fields.title ?? "",
+        a,
+      ];
+      const secondParts = [
+        getAuthorSortKey(second.fields.author),
+        second.fields.year ?? "",
+        second.fields.title ?? "",
+        b,
+      ];
+      return firstParts.join("\u0000").localeCompare(secondParts.join("\u0000"));
+    });
+  }
+
+  getCitationLabel(
+    key: string,
+    number: number,
+    style: BibliographyStyle,
+  ): string {
+    const indexed = this.citationKeyIndex.get(key);
+    if (!indexed) return style === "alpha" || style === "apalike" ? key : String(number);
+    return getBibliographyLabel(style, {
+      number: String(number),
+      authors: stringifyAuthors(indexed.fields.author, false),
+      year: indexed.fields.year?.slice(0, 4) ?? "",
+    });
+  }
+
+  formatBibEntry(
+    key: string,
+    number: number,
+    settings: CiteSettings,
+    labelOverride?: string,
+  ): FormattedBibEntry {
     const indexed = this.citationKeyIndex.get(key);
     const file = this.findNote(key);
-    if (!indexed || !file) return { label: `[${number}] ${key}`, filePath: null };
+    if (!indexed || !file) {
+      const label = labelOverride ?? this.getCitationLabel(key, number, settings.bibliographyStyle);
+      return {
+        label: settings.bibliographyStyle === "apalike" ? `${label}. ${key}.` : `[${label}] ${key}`,
+        filePath: null,
+      };
+    }
 
     const author = indexed.fields.author;
     const year = indexed.fields.year?.slice(0, 4) ?? "";
-    const publication = formatBibliographyPublication(indexed.type, indexed.fields, year);
+    const apaYear = settings.bibliographyStyle === "apalike" && labelOverride
+      ? /,\s*(\d{4}(?:[a-z]|\d+)?)$/.exec(labelOverride)?.[1] ?? year
+      : year;
+    const publication = formatBibliographyPublication(
+      indexed.type,
+      indexed.fields,
+      settings.bibliographyStyle === "apalike" ? "" : year,
+    );
     const label = renderBibliographyStyle(settings.bibliographyStyle, {
       number: String(number),
+      label: labelOverride ?? "",
       key,
       authors: stringifyAuthors(author, false),
       abbrAuthors: stringifyAuthors(author, true),
-      year,
+      year: apaYear,
       title: indexed.fields.title ?? "",
       publication,
     });

@@ -332,9 +332,40 @@ function extractLastName(raw: string): string {
   return name.split(/\s+/).pop() ?? name;
 }
 
+export function getAuthorSortKey(value: unknown): string {
+  return parseAuthorList(value).map(extractLastName).join(" ");
+}
+
 function getAlphaLabel(authors: string, year: string): string {
-  const firstAuthor = authors.split(/\s+and\s+/)[0]?.trim() ?? "";
-  return `${extractLastName(firstAuthor).slice(0, 3) || "ref"}${year.slice(-2)}`;
+  const familyNames = parseAuthorList(authors).map(extractLastName).filter(Boolean);
+  const yearSuffix = year.slice(-2);
+  if (familyNames.length === 0) return `Ref${yearSuffix}`;
+  if (familyNames.length === 1) {
+    const family = familyNames[0] ?? "Ref";
+    return `${family.slice(0, 1).toUpperCase()}${family.slice(1, 3).toLowerCase()}${yearSuffix}`;
+  }
+  const initials = familyNames.slice(0, 4)
+    .map((family) => family.slice(0, 1).toUpperCase())
+    .join("");
+  return `${initials}${familyNames.length > 4 ? "+" : ""}${yearSuffix}`;
+}
+
+function getApaLikeLabel(authors: string, year: string): string {
+  const familyNames = parseAuthorList(authors).map(extractLastName).filter(Boolean);
+  if (familyNames.length === 0) return year || "Reference";
+  const authorLabel = familyNames.length === 1 ? familyNames[0] ?? ""
+    : familyNames.length === 2 ? `${familyNames[0]} & ${familyNames[1]}`
+      : `${familyNames[0]} et al.`;
+  return year ? `${authorLabel}, ${year}` : authorLabel;
+}
+
+export function getBibliographyLabel(
+  style: BibliographyStyle,
+  values: Record<string, string>,
+): string {
+  if (style === "alpha") return getAlphaLabel(values.authors ?? "", values.year ?? "");
+  if (style === "apalike") return getApaLikeLabel(values.authors ?? "", values.year ?? "");
+  return values.number ?? "";
 }
 
 function cleanupLabel(label: string): string {
@@ -427,12 +458,14 @@ export function renderBibliographyStyle(
     abbrv: "[{label}] {abbrAuthors}. {title}. {publication}.",
     unsrt: "[{label}] {authors}. {title}. {publication}.",
     alpha: "[{label}] {authors}. {title}. {publication}.",
-    ieeetr: '[{label}] {authors}, "{title}," {publication}.',
+    ieeetr: '[{label}] {abbrAuthors}, "{title}," {publication}.',
     acm: "[{label}] {authors}. {title}. {publication}.",
+    siam: "[{label}] {abbrAuthors}, {title}, {publication}.",
+    apalike: "{authors} ({year}). {title}. {publication}.",
   };
   const data: Record<string, string> = {
     ...values,
-    label: style === "alpha" ? getAlphaLabel(values.authors ?? "", values.year ?? "") : values.number ?? "",
+    label: values.label || getBibliographyLabel(style, values),
   };
   return cleanupLabel(formats[style].replace(/\{(\w+)\}/g, (_match, key: string) => data[key] ?? ""));
 }

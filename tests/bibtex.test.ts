@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatBibliographyPublication,
+  getBibliographyLabel,
   parseAuthorList,
   parseBibtexEntries,
   renderBibliographyStyle,
@@ -96,7 +97,7 @@ describe("author formatting", () => {
   });
 });
 
-describe("lightweight bibliography formatting", () => {
+describe("bibliography formatting", () => {
   it.each([
     ["article", { journal: "Journal", volume: "2", number: "3", pages: "4--8" }, "Journal, 2(3):4–8, 2025"],
     ["inproceedings", { booktitle: "Conference", pages: "1--2" }, "In Conference, p. 1–2, 2025"],
@@ -108,7 +109,7 @@ describe("lightweight bibliography formatting", () => {
     expect(formatBibliographyPublication(type, fields, "2025")).toBe(expected);
   });
 
-  it.each(["plain", "abbrv", "unsrt", "alpha", "ieeetr", "acm"] as const)(
+  it.each(["plain", "abbrv", "unsrt", "alpha", "ieeetr", "acm", "siam", "apalike"] as const)(
     "renders the %s preset",
     (style) => {
       const rendered = renderBibliographyStyle(style, {
@@ -123,4 +124,19 @@ describe("lightweight bibliography formatting", () => {
       expect(rendered).not.toContain("  ");
     },
   );
+
+  it("creates BibTeX-compatible alpha and author-year labels", () => {
+    expect(getBibliographyLabel("alpha", {
+      authors: "Masaki Kashiwara and Toshiyuki Nakashima",
+      year: "1994",
+    })).toBe("KN94");
+    expect(getBibliographyLabel("alpha", {
+      authors: "Serge Lang",
+      year: "2002",
+    })).toBe("Lan02");
+    expect(getBibliographyLabel("apalike", {
+      authors: "Jane Doe and John Smith",
+      year: "2025",
+    })).toBe("Doe & Smith, 2025");
+  });
 });

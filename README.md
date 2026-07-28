@@ -2,9 +2,9 @@
 
 [日本語](README_ja.md) | [简体中文](README_zh.md)
 
-Cite renders LaTeX- or Pandoc-style citations in Obsidian and links them to reference notes containing BibTeX. It works in Live Preview and Reading view, provides citation-key completion, and can render a lightweight bibliography.
+Cite renders LaTeX- or Pandoc-style citations in Obsidian and links them to reference notes containing BibTeX. It works in Live Preview and Reading view, provides citation-key completion, and can render a bibliography.
 
-> Cite 0.1.1 requires Obsidian 1.12.7 or later. Desktop, iOS, and Android are supported.
+> Cite 0.1.2 requires Obsidian 1.12.7 or later. Desktop, iOS, and Android are supported.
 
 ## Features
 
@@ -13,6 +13,7 @@ Cite renders LaTeX- or Pandoc-style citations in Obsidian and links them to refe
 - Generate a bibliography at `\bibliography`.
 - Resolve one or more BibTeX entries from each reference note.
 - Reindex automatically when reference notes are created, edited, moved, or deleted.
+- Match the settings interface to Obsidian's language in English, Japanese, and Simplified Chinese.
 - Keep code, frontmatter, and math examples unchanged.
 
 ## Setup
@@ -48,7 +49,7 @@ Cite supports common `article`, `book`, `inproceedings`/`conference`, `incollect
 
 The parser intentionally does not evaluate BibTeX string macros, `#` concatenation, `crossref` inheritance, or LaTeX text-formatting commands. Unsupported constructs remain local to the reference note and never trigger network access.
 
-Bibliography presets are lightweight, readable approximations. **Plain**, **Abbreviated**, **Unsorted**, **Alphabetic label**, **IEEE-like**, and **ACM-like** are not full BibTeX or CSL implementations and should not be used when publication-exact formatting is required. Duplicate citation keys are resolved deterministically: the entry in the alphabetically first note path wins, and duplicates are shown in settings.
+Bibliography styles include **Plain / jplain**, **Abbreviated / jabbrv**, **Unsorted / junsrt**, **Alphabetic label**, **IEEE Transactions**, **ACM**, **SIAM**, and **APA-like**. Plain-family, Alpha, ACM, SIAM, and APA-like bibliographies are sorted by author; Unsorted and IEEE Transactions retain citation order. Duplicate citation keys are resolved deterministically: the entry in the alphabetically first note path wins, and duplicates are shown in settings.
 
 ## Installation
 
