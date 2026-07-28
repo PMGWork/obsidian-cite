@@ -2,6 +2,17 @@ import { getLanguage } from "obsidian";
 
 export type CiteLocale = "en" | "ja" | "zh";
 
+export const BIBLIOGRAPHY_STYLE_LABELS = {
+  plain: "Plain / jplain",
+  abbrv: "Abbreviated / jabbrv",
+  unsrt: "Unsorted / junsrt",
+  alpha: "Alphabetic label",
+  ieeetr: "IEEE Transactions",
+  acm: "ACM",
+  siam: "SIAM",
+  apalike: "APA-like",
+} as const;
+
 export interface CiteTranslations {
   citationSyntax: string;
   citationSyntaxDesc: string;
@@ -20,16 +31,7 @@ export interface CiteTranslations {
   parseErrors: (count: number) => string;
   duplicateKeysWarning: (keys: string) => string;
   bibtexParseErrors: string;
-  bibliographyStyles: {
-    plain: string;
-    abbrv: string;
-    unsrt: string;
-    alpha: string;
-    ieeetr: string;
-    acm: string;
-    siam: string;
-    apalike: string;
-  };
+  bibliographyStyles: typeof BIBLIOGRAPHY_STYLE_LABELS;
 }
 
 const TRANSLATIONS: Record<CiteLocale, CiteTranslations> = {
@@ -51,16 +53,7 @@ const TRANSLATIONS: Record<CiteLocale, CiteTranslations> = {
     parseErrors: (count) => `${count} parse errors`,
     duplicateKeysWarning: (keys) => `Duplicate keys (first path wins): ${keys}`,
     bibtexParseErrors: "BibTeX parse errors",
-    bibliographyStyles: {
-      plain: "Plain / jplain",
-      abbrv: "Abbreviated / jabbrv",
-      unsrt: "Unsorted / junsrt",
-      alpha: "Alphabetic label",
-      ieeetr: "IEEE Transactions",
-      acm: "ACM",
-      siam: "SIAM",
-      apalike: "APA-like",
-    },
+    bibliographyStyles: BIBLIOGRAPHY_STYLE_LABELS,
   },
   ja: {
     citationSyntax: "引用形式",
@@ -80,16 +73,7 @@ const TRANSLATIONS: Record<CiteLocale, CiteTranslations> = {
     parseErrors: (count) => `解析エラー${count}件`,
     duplicateKeysWarning: (keys) => `重複キー（パス順で最初の項目を使用）: ${keys}`,
     bibtexParseErrors: "BibTeX解析エラー",
-    bibliographyStyles: {
-      plain: "標準 / jplain",
-      abbrv: "短縮 / jabbrv",
-      unsrt: "引用順 / junsrt",
-      alpha: "英字ラベル",
-      ieeetr: "IEEE Transactions",
-      acm: "ACM",
-      siam: "SIAM",
-      apalike: "APA風",
-    },
+    bibliographyStyles: BIBLIOGRAPHY_STYLE_LABELS,
   },
   zh: {
     citationSyntax: "引用语法",
@@ -109,16 +93,7 @@ const TRANSLATIONS: Record<CiteLocale, CiteTranslations> = {
     parseErrors: (count) => `${count}个解析错误`,
     duplicateKeysWarning: (keys) => `重复键（使用路径排序最前的条目）：${keys}`,
     bibtexParseErrors: "BibTeX解析错误",
-    bibliographyStyles: {
-      plain: "标准 / jplain",
-      abbrv: "缩写 / jabbrv",
-      unsrt: "引用顺序 / junsrt",
-      alpha: "字母标签",
-      ieeetr: "IEEE Transactions",
-      acm: "ACM",
-      siam: "SIAM",
-      apalike: "类APA",
-    },
+    bibliographyStyles: BIBLIOGRAPHY_STYLE_LABELS,
   },
 };
 
